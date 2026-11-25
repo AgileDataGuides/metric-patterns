@@ -1,0 +1,574 @@
+{
+	"version": 1,
+	"sqlTestedOn": "DuckDB 1.2.1",
+	"setting": "Examples use a small online shop: orders, products, customers, web sessions.",
+	"words": [
+		{
+			"name": "Fact",
+			"meaning": "A value that was recorded.",
+			"example": "an order amount of $42.50"
+		},
+		{
+			"name": "Measure",
+			"meaning": "One sum, count or other total over Facts.",
+			"example": "total revenue = sum of order amount"
+		},
+		{
+			"name": "Metric",
+			"meaning": "A formula over Measures.",
+			"example": "revenue growth = (this year's revenue - last year's revenue) / last year's revenue"
+		}
+	],
+	"tables": "SQL and DAX:  order_items / Items (order_id, customer_id, product_id, unit_price, quantity, sale_price, status, order_date, ship_date)\n              sale_price is the value of the line: unit_price x quantity\n              products (product_id, brand, category, cost)   cost is for one unit\n              customers (customer_id, city, region, tier)   customer_history (customer_id, tier, valid_from, valid_to)\n              sessions (session_id, session_date)   stock (product_id, snapshot_date, units_on_hand)   budget (month, amount)\n              calendar (date), one row for each date   calendar_months (month), one row for each month\nExcel:        one flat table called Items, with the product and customer columns, and month and year, already looked up\n              plus Daily (date, sales) with a row for every date, Stock, Sessions and History",
+	"families": [
+		{
+			"id": "simple-totals",
+			"name": "Simple totals",
+			"description": "One total over one list of rows. Every layer starts here."
+		},
+		{
+			"id": "totals-with-a-rule-inside",
+			"name": "Totals with a rule inside",
+			"description": "The business rule lives in the definition, so nobody has to remember it."
+		},
+		{
+			"id": "formulas-over-totals",
+			"name": "Formulas over totals",
+			"description": "Two or more Measures combined. The parts must be totalled first, then combined."
+		},
+		{
+			"id": "compared-with-a-whole",
+			"name": "Compared with a whole",
+			"description": "The number only means something beside a bigger number."
+		},
+		{
+			"id": "over-time",
+			"name": "Over time",
+			"description": "The same Measure, seen through a period. Time causes more wrong numbers than anything else."
+		},
+		{
+			"id": "things-that-do-not-add-up",
+			"name": "Things that do not add up",
+			"description": "Numbers that are right at each level, and wrong when the levels are added."
+		},
+		{
+			"id": "across-more-than-one-list-of-events",
+			"name": "Across more than one list of events",
+			"description": "The question needs two kinds of event, or events about events."
+		}
+	],
+	"patterns": [
+		{
+			"id": "sum",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Sum",
+			"whatItIs": "Add up a recorded value.",
+			"plainExample": "total sales = sum of sale price",
+			"question": "What are our total sales?",
+			"layerMust": "Add every row once, including rows that have no match in another table.",
+			"withoutIt": "A total that quietly loses rows.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price)\nFROM order_items",
+				"excel": "=SUM(Items[sale_price])",
+				"dax": "Total Sales = SUM ( Items[sale_price] )"
+			}
+		},
+		{
+			"id": "count",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Count",
+			"whatItIs": "Count the rows, or count a key.",
+			"plainExample": "items sold = count of order items",
+			"question": "How many items did we sell?",
+			"layerMust": "Know what one row is.",
+			"withoutIt": "A count of the wrong thing, such as orders when items were asked.",
+			"examples": {
+				"sql": "SELECT COUNT(*)\nFROM order_items",
+				"excel": "=ROWS(Items)",
+				"dax": "Items Sold = COUNTROWS ( Items )"
+			}
+		},
+		{
+			"id": "distinct-count",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Distinct count",
+			"whatItIs": "Count each different thing once.",
+			"plainExample": "buyers = count of different customers",
+			"question": "How many customers bought from us?",
+			"layerMust": "Count people, not rows.",
+			"withoutIt": "A customer with two orders counts twice.",
+			"examples": {
+				"sql": "SELECT COUNT(DISTINCT customer_id)\nFROM order_items",
+				"excel": "=COUNTA(UNIQUE(Items[customer_id]))",
+				"dax": "Buyers = DISTINCTCOUNT ( Items[customer_id] )"
+			}
+		},
+		{
+			"id": "smallest-and-largest",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Smallest and largest",
+			"whatItIs": "The lowest or highest value, or the earliest or latest date.",
+			"plainExample": "first order date = earliest order date",
+			"question": "When did we get our first order? What was our biggest sale?",
+			"layerMust": "Work on dates as well as numbers.",
+			"withoutIt": "People export the data to find it.",
+			"examples": {
+				"sql": "SELECT MIN(order_date), MAX(sale_price)\nFROM order_items",
+				"excel": "=MIN(Items[order_date])\n=MAX(Items[sale_price])",
+				"dax": "First Order Date = MIN ( Items[order_date] )\nBiggest Sale = MAX ( Items[sale_price] )"
+			}
+		},
+		{
+			"id": "average-of-a-value",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Average of a value",
+			"whatItIs": "The mean of a recorded value.",
+			"plainExample": "average sale price = average of sale price",
+			"question": "What does a typical item sell for?",
+			"layerMust": "Average the rows, not other averages.",
+			"withoutIt": "An average of averages, which is a different number.",
+			"examples": {
+				"sql": "SELECT AVG(sale_price)\nFROM order_items",
+				"excel": "=AVERAGE(Items[sale_price])",
+				"dax": "Average Sale Price = AVERAGE ( Items[sale_price] )"
+			}
+		},
+		{
+			"id": "middle-value",
+			"family": "simple-totals",
+			"kind": "Measure",
+			"name": "Middle value",
+			"whatItIs": "The median, or another percentile.",
+			"plainExample": "median order value",
+			"question": "What does a normal order look like, without the few huge ones?",
+			"layerMust": "Offer more than sum, count and average.",
+			"withoutIt": "A mean that a few large orders pull upward.",
+			"examples": {
+				"sql": "SELECT PERCENTILE_CONT(0.5)\n       WITHIN GROUP (ORDER BY order_value)\nFROM (SELECT order_id, SUM(sale_price) AS order_value\n      FROM order_items GROUP BY order_id) o",
+				"excel": "=MEDIAN(BYROW(UNIQUE(Items[order_id]),\n  LAMBDA(o,SUMIFS(Items[sale_price],Items[order_id],o))))",
+				"dax": "Median Order Value =\nMEDIANX ( VALUES ( Items[order_id] ),\n          CALCULATE ( SUM ( Items[sale_price] ) ) )"
+			}
+		},
+		{
+			"id": "filtered-measure",
+			"family": "totals-with-a-rule-inside",
+			"kind": "Measure",
+			"name": "Filtered measure",
+			"whatItIs": "A total with a condition built in.",
+			"plainExample": "completed sales = sum of sale price where status is complete",
+			"question": "What are our completed sales?",
+			"layerMust": "Hold the filter in the definition.",
+			"withoutIt": "Each person applies the filter their own way, or forgets it.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price)\nFROM order_items\nWHERE status = 'Complete'",
+				"excel": "=SUMIFS(Items[sale_price],Items[status],\"Complete\")",
+				"dax": "Completed Sales =\nCALCULATE ( [Total Sales], Items[status] = \"Complete\" )"
+			}
+		},
+		{
+			"id": "default-exclusions",
+			"family": "totals-with-a-rule-inside",
+			"kind": "Measure",
+			"name": "Default exclusions",
+			"whatItIs": "A total that leaves out a standard list.",
+			"plainExample": "net sales = sales without cancelled and returned items",
+			"question": "What are our net sales?",
+			"layerMust": "Hold a list of things to leave out.",
+			"withoutIt": "Test orders and cancellations in the board report.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price)\nFROM order_items\nWHERE status NOT IN ('Cancelled','Returned')",
+				"excel": "=SUMIFS(Items[sale_price],\n  Items[status],\"<>Cancelled\",\n  Items[status],\"<>Returned\")",
+				"dax": "Net Sales =\nCALCULATE ( [Total Sales],\n  NOT Items[status] IN { \"Cancelled\", \"Returned\" } )"
+			}
+		},
+		{
+			"id": "conditional-count",
+			"family": "totals-with-a-rule-inside",
+			"kind": "Measure",
+			"name": "Conditional count",
+			"whatItIs": "Count only the rows that meet a condition.",
+			"plainExample": "returned items = count where status is returned",
+			"question": "How many items came back?",
+			"layerMust": "Put a condition inside the count.",
+			"withoutIt": "A second table built only to count one status.",
+			"examples": {
+				"sql": "SELECT SUM(CASE WHEN status = 'Returned'\n                THEN 1 ELSE 0 END)\nFROM order_items",
+				"excel": "=COUNTIFS(Items[status],\"Returned\")",
+				"dax": "Returned Items =\nCALCULATE ( COUNTROWS ( Items ), Items[status] = \"Returned\" )"
+			}
+		},
+		{
+			"id": "ratio",
+			"family": "formulas-over-totals",
+			"kind": "Metric",
+			"name": "Ratio",
+			"whatItIs": "One Measure divided by another.",
+			"plainExample": "average order value = total sales / order count",
+			"question": "What is our average order value?",
+			"layerMust": "Divide the totals, at every level of a report.",
+			"withoutIt": "The overall figure is the average of the rows above it.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price) / COUNT(DISTINCT order_id)\nFROM order_items",
+				"excel": "=SUM(Items[sale_price])/COUNTA(UNIQUE(Items[order_id]))",
+				"dax": "Average Order Value =\nDIVIDE ( [Total Sales], DISTINCTCOUNT ( Items[order_id] ) )"
+			}
+		},
+		{
+			"id": "rate",
+			"family": "formulas-over-totals",
+			"kind": "Metric",
+			"name": "Rate",
+			"whatItIs": "A part divided by its whole, as a percentage.",
+			"plainExample": "return rate = returned items / items sold",
+			"question": "What is our return rate?",
+			"layerMust": "Keep the top and bottom numbers from the same set of rows.",
+			"withoutIt": "A rate above 100%.",
+			"examples": {
+				"sql": "SELECT SUM(CASE WHEN status = 'Returned'\n                THEN 1.0 ELSE 0 END) / COUNT(*)\nFROM order_items",
+				"excel": "=COUNTIFS(Items[status],\"Returned\")/ROWS(Items)",
+				"dax": "Return Rate = DIVIDE ( [Returned Items], [Items Sold] )"
+			}
+		},
+		{
+			"id": "ratio-across-two-tables",
+			"family": "formulas-over-totals",
+			"kind": "Metric",
+			"name": "Ratio across two tables",
+			"whatItIs": "The parts sit in different tables.",
+			"plainExample": "margin = (sales - product cost) / sales",
+			"question": "What is our gross margin?",
+			"layerMust": "Fetch each item's cost from the product table, and lose or repeat no item on the way.",
+			"withoutIt": "Items with no matching product drop out, and margin looks better than it is.",
+			"examples": {
+				"sql": "-- LEFT JOIN keeps every item. An item with no product\n-- has no cost: find those items, never count them as 0.\nSELECT (SUM(i.sale_price) - SUM(p.cost * i.quantity))\n       / SUM(i.sale_price)\nFROM order_items i\nLEFT JOIN products p ON p.product_id = i.product_id",
+				"excel": "=(SUM(Items[sale_price])\n  -SUMPRODUCT(Items[cost],Items[quantity]))\n  /SUM(Items[sale_price])",
+				"dax": "Gross Margin =\nVAR Cost = SUMX ( Items, RELATED ( Products[cost] ) * Items[quantity] )\nRETURN DIVIDE ( [Total Sales] - Cost, [Total Sales] )"
+			}
+		},
+		{
+			"id": "weighted-average",
+			"family": "formulas-over-totals",
+			"kind": "Metric",
+			"name": "Weighted average",
+			"whatItIs": "An average where bigger rows count for more.",
+			"plainExample": "sum of (unit price x quantity) / sum of quantity",
+			"question": "What is our average price, allowing for how many we sold?",
+			"layerMust": "Multiply before adding.",
+			"withoutIt": "A plain average that treats one sale like a thousand.",
+			"examples": {
+				"sql": "SELECT SUM(unit_price * quantity) / SUM(quantity)\nFROM order_items",
+				"excel": "=SUMPRODUCT(Items[unit_price],Items[quantity])\n  /SUM(Items[quantity])",
+				"dax": "Weighted Price =\nDIVIDE ( SUMX ( Items, Items[unit_price] * Items[quantity] ),\n         SUM ( Items[quantity] ) )"
+			}
+		},
+		{
+			"id": "metric-built-from-metrics",
+			"family": "formulas-over-totals",
+			"kind": "Metric",
+			"name": "Metric built from metrics",
+			"whatItIs": "A metric whose parts are metrics. Often drawn as a tree.",
+			"plainExample": "sales = buyers x orders per buyer x value per order",
+			"question": "Sales are down. Is it fewer buyers, fewer orders each, or smaller orders?",
+			"layerMust": "Let one definition use another, and keep the link.",
+			"withoutIt": "The parts are defined three times and stop agreeing.",
+			"examples": {
+				"sql": "SELECT COUNT(DISTINCT customer_id) AS buyers,\n  COUNT(DISTINCT order_id) * 1.0\n    / COUNT(DISTINCT customer_id) AS orders_per_buyer,\n  SUM(sale_price)\n    / COUNT(DISTINCT order_id) AS value_per_order\nFROM order_items",
+				"excel": "=Buyers*OrdersPerBuyer*ValuePerOrder\n(three named cells, each with its own formula)",
+				"dax": "Orders = DISTINCTCOUNT ( Items[order_id] )\nOrders per Buyer = DIVIDE ( [Orders], [Buyers] )\nSales From Parts =\n[Buyers] * [Orders per Buyer] * [Average Order Value]"
+			}
+		},
+		{
+			"id": "share-of-total",
+			"family": "compared-with-a-whole",
+			"kind": "Metric",
+			"name": "Share of total",
+			"whatItIs": "A part over the whole, where the whole ignores the split.",
+			"plainExample": "brand share = brand sales / all sales",
+			"question": "What share of sales does each brand have?",
+			"layerMust": "Work out the bottom number at a wider level than the rows.",
+			"withoutIt": "Every brand shows 100%.",
+			"examples": {
+				"sql": "SELECT p.brand,\n  SUM(i.sale_price)\n    / SUM(SUM(i.sale_price)) OVER () AS share\nFROM order_items i\nLEFT JOIN products p ON p.product_id = i.product_id\nGROUP BY p.brand",
+				"excel": "=SUMIFS(Items[sale_price],Items[brand],[@brand])\n  /SUM(Items[sale_price])",
+				"dax": "Brand Share =\nDIVIDE ( [Total Sales],\n  CALCULATE ( [Total Sales], ALL ( Products[brand] ) ) )"
+			}
+		},
+		{
+			"id": "a-wider-total-on-narrower-rows",
+			"family": "compared-with-a-whole",
+			"kind": "Metric",
+			"name": "A wider total on narrower rows",
+			"whatItIs": "Two levels of total in one answer.",
+			"plainExample": "city sales, region sales, side by side",
+			"question": "Show each city's sales beside its region's total.",
+			"layerMust": "Total at two levels in one query.",
+			"withoutIt": "Two reports and a spreadsheet to join them.",
+			"examples": {
+				"sql": "SELECT c.region, c.city,\n  SUM(i.sale_price) AS city_sales,\n  SUM(SUM(i.sale_price))\n    OVER (PARTITION BY c.region) AS region_sales\nFROM order_items i\nJOIN customers c ON c.customer_id = i.customer_id\nGROUP BY c.region, c.city",
+				"excel": "=SUMIFS(Items[sale_price],Items[region],[@region])",
+				"dax": "Region Sales =\nCALCULATE ( [Total Sales],\n  ALLEXCEPT ( Customers, Customers[region] ) )"
+			}
+		},
+		{
+			"id": "top-n-and-rank",
+			"family": "compared-with-a-whole",
+			"kind": "Metric",
+			"name": "Top N and rank",
+			"whatItIs": "Order by a Measure and keep the first few.",
+			"plainExample": "top 3 brands by sales",
+			"question": "Who are our top 3 brands?",
+			"layerMust": "Rank on a total, and say what happens in a tie.",
+			"withoutIt": "Two brands tie for third and one vanishes.",
+			"examples": {
+				"sql": "WITH b AS (\n  SELECT p.brand, SUM(i.sale_price) AS sales,\n    RANK() OVER (ORDER BY SUM(i.sale_price) DESC) AS rnk\n  FROM order_items i\n  JOIN products p ON p.product_id = i.product_id\n  GROUP BY p.brand)\nSELECT brand, sales, rnk\nFROM b\nWHERE rnk <= 3\nORDER BY rnk",
+				"excel": "=TAKE(SORT(\n  GROUPBY(Items[brand],Items[sale_price],SUM,,0),\n  2,-1),3)",
+				"dax": "Brand Rank =\nRANKX ( ALL ( Products[brand] ), [Total Sales] )\n(then keep the brands where the rank is 3 or less)"
+			}
+		},
+		{
+			"id": "time-window",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Time window",
+			"whatItIs": "A total over a moving period.",
+			"plainExample": "sales, last 30 days",
+			"question": "What were sales in the last 30 days?",
+			"layerMust": "Know which date to use, and what today is.",
+			"withoutIt": "A window that filters nothing, so all sales come back.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price)\nFROM order_items\nWHERE order_date > CURRENT_DATE - INTERVAL '30' DAY",
+				"excel": "=SUMIFS(Items[sale_price],\n  Items[order_date],\">\"&TODAY()-30)",
+				"dax": "Sales Last 30 Days =\nCALCULATE ( [Total Sales],\n  DATESINPERIOD ( Calendar[date],\n    MAX ( Calendar[date] ), -30, DAY ) )"
+			}
+		},
+		{
+			"id": "period-to-date",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Period to date",
+			"whatItIs": "A total from the start of a period to now.",
+			"plainExample": "sales, year to date",
+			"question": "How are we doing this year so far?",
+			"layerMust": "Know where a period starts, including a financial year.",
+			"withoutIt": "The calendar year used where the financial year was meant.",
+			"examples": {
+				"sql": "SELECT SUM(sale_price)\nFROM order_items\nWHERE order_date >= DATE_TRUNC('year', CURRENT_DATE)\n  AND order_date <= CURRENT_DATE",
+				"excel": "=SUMIFS(Items[sale_price],\n  Items[order_date],\">=\"&DATE(YEAR(TODAY()),1,1),\n  Items[order_date],\"<=\"&TODAY())",
+				"dax": "Sales YTD = TOTALYTD ( [Total Sales], Calendar[date] )\nSales FYTD =\nTOTALYTD ( [Total Sales], Calendar[date], \"31/3\" )\n(a financial year that ends on 31 March)"
+			}
+		},
+		{
+			"id": "period-over-period",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Period over period",
+			"whatItIs": "This period against the same period before.",
+			"plainExample": "growth = (this year - last year) / last year",
+			"question": "How much did sales grow on last year?",
+			"layerMust": "Line up like with like, including a part-finished month and a leap day.",
+			"withoutIt": "Half a month compared with a full month.",
+			"examples": {
+				"sql": "WITH y AS (\n  SELECT EXTRACT(YEAR FROM order_date) AS yr,\n         SUM(sale_price) AS sales\n  FROM order_items GROUP BY 1)\nSELECT yr,\n  sales / LAG(sales) OVER (ORDER BY yr) - 1 AS growth\nFROM y",
+				"excel": "=SUMIFS(Items[sale_price],Items[year],[@year])\n  /SUMIFS(Items[sale_price],Items[year],[@year]-1)-1",
+				"dax": "Sales Growth =\nVAR LastYear = CALCULATE ( [Total Sales],\n  SAMEPERIODLASTYEAR ( Calendar[date] ) )\nRETURN DIVIDE ( [Total Sales] - LastYear, LastYear )"
+			}
+		},
+		{
+			"id": "running-total",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Running total",
+			"whatItIs": "Each period added to all the ones before.",
+			"plainExample": "cumulative sales by month",
+			"question": "How have sales built up through the year?",
+			"layerMust": "Add across rows in order.",
+			"withoutIt": "The running total restarts or skips.",
+			"examples": {
+				"sql": "SELECT DATE_TRUNC('month', order_date) AS month,\n  SUM(SUM(sale_price)) OVER (\n    ORDER BY DATE_TRUNC('month', order_date)) AS running\nFROM order_items\nGROUP BY 1\nORDER BY 1",
+				"excel": "=SUMIFS(Items[sale_price],Items[month],\"<=\"&[@month])",
+				"dax": "Running Sales =\nCALCULATE ( [Total Sales],\n  FILTER ( ALL ( Calendar[date] ),\n    Calendar[date] <= MAX ( Calendar[date] ) ) )"
+			}
+		},
+		{
+			"id": "rolling-average",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Rolling average",
+			"whatItIs": "The average of the last few periods, moving along.",
+			"plainExample": "7-day average sales",
+			"question": "What is the trend, without the daily noise?",
+			"layerMust": "Look back a fixed number of periods from each row.",
+			"withoutIt": "The first rows average over too few days and nobody is told.",
+			"examples": {
+				"sql": "WITH daily AS (\n  SELECT c.date, COALESCE(SUM(i.sale_price), 0) AS sales\n  FROM calendar c\n  LEFT JOIN order_items i ON i.order_date = c.date\n  GROUP BY c.date)\nSELECT date,\n  CASE WHEN COUNT(*) OVER w = 7\n       THEN AVG(sales) OVER w END AS avg_7\nFROM daily\nWINDOW w AS (ORDER BY date\n  ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)",
+				"excel": "=AVERAGEIFS(Daily[sales],\n  Daily[date],\">\"&[@date]-7,\n  Daily[date],\"<=\"&[@date])\n(Daily has a row for every date, with 0 on a day with no sales)",
+				"dax": "Sales 7 Day Average =\nDIVIDE (\n  CALCULATE ( [Total Sales],\n    DATESINPERIOD ( Calendar[date],\n      MAX ( Calendar[date] ), -7, DAY ) ),\n  7 )\n(divide by 7 days: AVERAGEX would skip the days with no sales)"
+			}
+		},
+		{
+			"id": "one-measure-a-second-date",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "One measure, a second date",
+			"whatItIs": "The same total placed on a different date.",
+			"plainExample": "sales by ship date",
+			"question": "What were sales by ship date, not order date?",
+			"layerMust": "Let one Measure use more than one date.",
+			"withoutIt": "A second copy of the metric for each date.",
+			"examples": {
+				"sql": "SELECT ship_date, SUM(sale_price)\nFROM order_items\nGROUP BY ship_date",
+				"excel": "=SUMIFS(Items[sale_price],Items[ship_date],[@date])",
+				"dax": "Sales by Ship Date =\nCALCULATE ( [Total Sales],\n  USERELATIONSHIP ( Items[ship_date], Calendar[date] ) )"
+			}
+		},
+		{
+			"id": "periods-with-nothing-in-them",
+			"family": "over-time",
+			"kind": "Metric",
+			"name": "Periods with nothing in them",
+			"whatItIs": "A period with no rows must still show.",
+			"plainExample": "a month with no orders shows as empty",
+			"question": "Show sales for every month this year.",
+			"layerMust": "Have a calendar of its own.",
+			"withoutIt": "The quiet month is missing from the chart.",
+			"examples": {
+				"sql": "SELECT c.month, SUM(i.sale_price) AS sales\nFROM calendar_months c\nLEFT JOIN order_items i\n  ON DATE_TRUNC('month', i.order_date) = c.month\nGROUP BY c.month",
+				"excel": "=SUMIFS(Items[sale_price],Items[month],[@month])\n(in a list that has a row for every month)",
+				"dax": "Sales Every Month = [Total Sales] + 0\n(with Calendar[month] on the rows)"
+			}
+		},
+		{
+			"id": "distinct-count-across-a-split",
+			"family": "things-that-do-not-add-up",
+			"kind": "Metric",
+			"name": "Distinct count across a split",
+			"whatItIs": "A distinct count shown with a breakdown.",
+			"plainExample": "buyers by category, and all buyers",
+			"question": "How many buyers in each category, and in total?",
+			"layerMust": "Work out the total again, not add the rows.",
+			"withoutIt": "A buyer in two categories counts twice in the total.",
+			"examples": {
+				"sql": "SELECT COALESCE(p.category, 'No category') AS category,\n  COUNT(DISTINCT i.customer_id) AS buyers\nFROM order_items i\nLEFT JOIN products p ON p.product_id = i.product_id\nGROUP BY ROLLUP (1)\n-- the total row is the one row with no category",
+				"excel": "=COUNTA(UNIQUE(FILTER(Items[customer_id],\n  Items[category]=[@category])))\nTotal: =COUNTA(UNIQUE(Items[customer_id]))",
+				"dax": "Buyers = DISTINCTCOUNT ( Items[customer_id] )\n(a measure is worked out again on the total row)"
+			}
+		},
+		{
+			"id": "balance-at-a-point-in-time",
+			"family": "things-that-do-not-add-up",
+			"kind": "Measure",
+			"name": "Balance at a point in time",
+			"whatItIs": "A value that adds across things, and not across time.",
+			"plainExample": "stock on hand at month end",
+			"question": "How much stock do we hold?",
+			"layerMust": "Add across products and take the last value across days.",
+			"withoutIt": "Thirty days of stock added into one huge month.",
+			"examples": {
+				"sql": "SELECT SUM(units_on_hand)\nFROM stock\nWHERE snapshot_date =\n  (SELECT MAX(snapshot_date) FROM stock)",
+				"excel": "=SUMIFS(Stock[units_on_hand],\n  Stock[snapshot_date],MAX(Stock[snapshot_date]))",
+				"dax": "Stock on Hand =\nCALCULATE ( SUM ( Stock[units_on_hand] ),\n  LASTNONBLANK ( Calendar[date],\n    CALCULATE ( SUM ( Stock[units_on_hand] ) ) ) )"
+			}
+		},
+		{
+			"id": "a-total-line-worked-out-again",
+			"family": "things-that-do-not-add-up",
+			"kind": "Metric",
+			"name": "A total line worked out again",
+			"whatItIs": "The total row of a ratio or rate.",
+			"plainExample": "overall rate = all returns / all items",
+			"question": "What is the return rate overall, under the rate for each category?",
+			"layerMust": "Recompute the total line from totals.",
+			"withoutIt": "The total line adds or averages the percentages.",
+			"examples": {
+				"sql": "SELECT COALESCE(p.category, 'No category') AS category,\n  SUM(CASE WHEN i.status = 'Returned'\n           THEN 1.0 ELSE 0 END) / COUNT(*) AS rate\nFROM order_items i\nLEFT JOIN products p ON p.product_id = i.product_id\nGROUP BY ROLLUP (1)\n-- the total row is the one row with no category",
+				"excel": "Total row:\n=COUNTIFS(Items[status],\"Returned\")/ROWS(Items)\n(from all rows, not from the rates above it)",
+				"dax": "Return Rate = DIVIDE ( [Returned Items], [Items Sold] )\n(a measure is worked out again on the total row)"
+			}
+		},
+		{
+			"id": "two-events-at-two-levels",
+			"family": "across-more-than-one-list-of-events",
+			"kind": "Metric",
+			"name": "Two events at two levels",
+			"whatItIs": "Two separate lists, each totalled on its own, then combined.",
+			"plainExample": "conversion = orders / sessions",
+			"question": "How many website sessions become orders?",
+			"layerMust": "Total each list alone before it combines them.",
+			"withoutIt": "Joining the lists multiplies both numbers.",
+			"examples": {
+				"sql": "SELECT\n  (SELECT COUNT(DISTINCT order_id) FROM order_items)\n  * 1.0 /\n  (SELECT COUNT(*) FROM sessions) AS conversion",
+				"excel": "=COUNTA(UNIQUE(Items[order_id]))/ROWS(Sessions)",
+				"dax": "Conversion =\nDIVIDE ( DISTINCTCOUNT ( Items[order_id] ),\n         COUNTROWS ( Sessions ) )"
+			}
+		},
+		{
+			"id": "actual-against-a-target",
+			"family": "across-more-than-one-list-of-events",
+			"kind": "Metric",
+			"name": "Actual against a target",
+			"whatItIs": "Events at a fine level against a plan at a coarse level.",
+			"plainExample": "sales by day against budget by month",
+			"question": "Are we ahead of budget?",
+			"layerMust": "Bring both to a level they share.",
+			"withoutIt": "The monthly budget repeated on every day and added up.",
+			"examples": {
+				"sql": "WITH a AS (\n  SELECT DATE_TRUNC('month', order_date) AS month,\n         SUM(sale_price) AS sales\n  FROM order_items GROUP BY 1)\nSELECT COALESCE(a.month, b.month) AS month,\n  COALESCE(a.sales, 0) - COALESCE(b.amount, 0)\n    AS against_budget\nFROM a\nFULL OUTER JOIN budget b ON b.month = a.month\nORDER BY 1",
+				"excel": "=SUMIFS(Items[sale_price],Items[month],[@month])\n  -[@budget]",
+				"dax": "Sales vs Budget =\n[Total Sales] - SUM ( Budget[amount] )\n(both tables link to Calendar at the month)"
+			}
+		},
+		{
+			"id": "a-measure-over-a-measure",
+			"family": "across-more-than-one-list-of-events",
+			"kind": "Metric",
+			"name": "A measure over a measure",
+			"whatItIs": "Total once for each customer, then total those results.",
+			"plainExample": "repeat rate = buyers with 2 or more orders / all buyers",
+			"question": "What share of buyers buy again?",
+			"layerMust": "Total in two steps.",
+			"withoutIt": "The rate is counted by order, not by buyer.",
+			"examples": {
+				"sql": "WITH c AS (\n  SELECT customer_id,\n         COUNT(DISTINCT order_id) AS orders\n  FROM order_items GROUP BY 1)\nSELECT SUM(CASE WHEN orders >= 2\n                THEN 1.0 ELSE 0 END) / COUNT(*)\nFROM c",
+				"excel": "=LET(c,UNIQUE(Items[customer_id]),\n  n,BYROW(c,LAMBDA(x,COUNTA(UNIQUE(\n    FILTER(Items[order_id],Items[customer_id]=x))))),\n  SUM(--(n>=2))/ROWS(c))",
+				"dax": "Repeat Rate =\nDIVIDE (\n  COUNTROWS ( FILTER ( VALUES ( Items[customer_id] ),\n    CALCULATE ( DISTINCTCOUNT ( Items[order_id] ) ) >= 2 ) ),\n  [Buyers] )"
+			}
+		},
+		{
+			"id": "cohort",
+			"family": "across-more-than-one-list-of-events",
+			"kind": "Metric",
+			"name": "Cohort",
+			"whatItIs": "Group people by when they started, then follow each group.",
+			"plainExample": "month 1 retention by first-order month",
+			"question": "Of the people who first bought in March, how many came back in April?",
+			"layerMust": "Know each customer's first event, and tell \"none\" from \"not yet known\".",
+			"withoutIt": "A month that has not happened yet shows 0%.",
+			"examples": {
+				"sql": "WITH f AS (\n  SELECT customer_id,\n    MIN(DATE_TRUNC('month', order_date)) AS first_month\n  FROM order_items GROUP BY 1)\nSELECT f.first_month,\n  CASE WHEN f.first_month + INTERVAL '2' MONTH\n            > CURRENT_DATE\n       THEN NULL  -- month 1 has not finished yet\n       ELSE COUNT(DISTINCT CASE\n         WHEN DATE_TRUNC('month', i.order_date)\n              = f.first_month + INTERVAL '1' MONTH\n         THEN i.customer_id END) * 1.0\n         / COUNT(DISTINCT f.customer_id)\n  END AS month_1\nFROM f\nJOIN order_items i ON i.customer_id = f.customer_id\nGROUP BY f.first_month\nORDER BY 1",
+				"excel": "Helper column first_month:\n=MINIFS(Items[month],Items[customer_id],[@customer_id])\nThen, for each starting month:\n=COUNTA(UNIQUE(FILTER(Items[customer_id],\n   (Items[first_month]=[@month])\n  *(Items[month]=EDATE([@month],1)))))\n /COUNTA(UNIQUE(FILTER(Items[customer_id],\n   Items[first_month]=[@month])))",
+				"dax": "Month 1 Retention =\nVAR m = SELECTEDVALUE ( Customers[first_month] )\nVAR Back = CALCULATE (\n  DISTINCTCOUNT ( Items[customer_id] ),\n  Items[month] = EDATE ( m, 1 ) )\nRETURN DIVIDE ( Back,\n  DISTINCTCOUNT ( Customers[customer_id] ) )\n(uses a first_month column on Customers)"
+			}
+		},
+		{
+			"id": "a-detail-as-it-was-then",
+			"family": "across-more-than-one-list-of-events",
+			"kind": "Metric",
+			"name": "A detail as it was then",
+			"whatItIs": "Use a value as it was on the day of the event.",
+			"plainExample": "sales by tier at time of order",
+			"question": "What were sales by the customer's tier at the time they bought?",
+			"layerMust": "Keep history, and join to it by date.",
+			"withoutIt": "Last year's sales are moved to this year's tier.",
+			"examples": {
+				"sql": "SELECT h.tier, SUM(i.sale_price)\nFROM order_items i\nJOIN customer_history h\n  ON h.customer_id = i.customer_id\n AND i.order_date >= h.valid_from\n AND i.order_date <  h.valid_to\nGROUP BY h.tier",
+				"excel": "Helper column tier_then:\n=XLOOKUP(1,\n  (History[customer_id]=[@customer_id])\n *(History[valid_from]<=[@order_date])\n *(History[valid_to]>[@order_date]),\n  History[tier])\nThen: =SUMIFS(Items[sale_price],Items[tier_then],[@tier])",
+				"dax": "Column on Items:\ntier_then =\nMAXX ( FILTER ( History,\n    History[customer_id] = Items[customer_id]\n && History[valid_from] <= Items[order_date]\n && History[valid_to] > Items[order_date] ),\n  History[tier] )\nThen use [Total Sales] by Items[tier_then]"
+			}
+		}
+	]
+}
