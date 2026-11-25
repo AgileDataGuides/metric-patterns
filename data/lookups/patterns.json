@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"sqlTestedOn": "DuckDB 1.2.1",
-	"setting": "Examples use a small online shop: orders, products, customers, web sessions.",
+	"setting": "Examples use a small online shop: orders, products, customers, web sessions, refunds, and a table of metric definitions.",
 	"words": [
 		{
 			"name": "Fact",
@@ -19,7 +19,7 @@
 			"example": "revenue growth = (this year's revenue - last year's revenue) / last year's revenue"
 		}
 	],
-	"tables": "SQL and DAX:  order_items / Items (order_id, customer_id, product_id, unit_price, quantity, sale_price, status, order_date, ship_date)\n              sale_price is the value of the line: unit_price x quantity\n              products (product_id, brand, category, cost)   cost is for one unit\n              customers (customer_id, city, region, tier)   customer_history (customer_id, tier, valid_from, valid_to)\n              sessions (session_id, session_date)   stock (product_id, snapshot_date, units_on_hand)   budget (month, amount)\n              calendar (date), one row for each date   calendar_months (month), one row for each month\nExcel:        one flat table called Items, with the product and customer columns, and month and year, already looked up\n              plus Daily (date, sales) with a row for every date, Stock, Sessions and History",
+	"tables": "SQL and DAX:  order_items / Items (order_id, customer_id, product_id, unit_price, quantity, sale_price, status, order_date, ship_date)\n              sale_price is the value of the line: unit_price x quantity\n              products (product_id, brand, category, cost)   cost is for one unit\n              customers (customer_id, city, region, tier)   customer_history (customer_id, tier, valid_from, valid_to)\n              sessions (session_id, session_date)   stock (product_id, snapshot_date, units_on_hand)   budget (month, amount)\n              refunds / Refunds (refund_id, order_id, amount, refund_date)\n              metric_definitions / Defs (metric_id, name, idea, formula, version, status, valid_from, valid_to)\n              status is active, retired or superseded (an older version of a definition that changed)\n              calendar (date), one row for each date   calendar_months (month), one row for each month\nExcel:        one flat table called Items, with the product and customer columns, and month and year, already looked up\n              plus Daily (date, sales) with a row for every date, Stock, Sessions, History, Refunds and Defs",
 	"families": [
 		{
 			"id": "simple-totals",
@@ -55,6 +55,11 @@
 			"id": "across-more-than-one-list-of-events",
 			"name": "Across more than one list of events",
 			"description": "The question needs two kinds of event, or events about events."
+		},
+		{
+			"id": "definitions-people-can-trust",
+			"name": "Definitions that people can trust",
+			"description": "The arithmetic can be right and the number still wrong, because nobody can say which definition gave it."
 		}
 	],
 	"patterns": [
@@ -568,6 +573,70 @@
 				"sql": "SELECT h.tier, SUM(i.sale_price)\nFROM order_items i\nJOIN customer_history h\n  ON h.customer_id = i.customer_id\n AND i.order_date >= h.valid_from\n AND i.order_date <  h.valid_to\nGROUP BY h.tier",
 				"excel": "Helper column tier_then:\n=XLOOKUP(1,\n  (History[customer_id]=[@customer_id])\n *(History[valid_from]<=[@order_date])\n *(History[valid_to]>[@order_date]),\n  History[tier])\nThen: =SUMIFS(Items[sale_price],Items[tier_then],[@tier])",
 				"dax": "Column on Items:\ntier_then =\nMAXX ( FILTER ( History,\n    History[customer_id] = Items[customer_id]\n && History[valid_from] <= Items[order_date]\n && History[valid_to] > Items[order_date] ),\n  History[tier] )\nThen use [Total Sales] by Items[tier_then]"
+			}
+		},
+		{
+			"id": "two-metrics-nearly-the-same",
+			"family": "definitions-people-can-trust",
+			"kind": "Metric",
+			"name": "Two metrics that are nearly the same",
+			"whatItIs": "Two saved definitions for one business idea, with a small difference between them.",
+			"plainExample": "\"revenue\" counts every order. \"net revenue\" leaves out returns. Both answer \"what is our revenue?\"",
+			"question": "Which revenue number is the right one?",
+			"layerMust": "Hold one definition for one idea, or say how the two differ, so a question finds the right one.",
+			"withoutIt": "Which number answers depends on luck: the first name found, or the one a person used last.",
+			"examples": {
+				"sql": "-- Find ideas with more than one definition\nSELECT a.idea, a.name, a.formula,\n       b.name AS also, b.formula AS also_formula\nFROM metric_definitions a\nJOIN metric_definitions b\n  ON b.idea = a.idea\n AND b.metric_id > a.metric_id\nWHERE a.status = 'active'\n  AND b.status = 'active'",
+				"excel": "=FILTER(Defs[[name]:[formula]],\n  (Defs[idea]=\"revenue\")*(Defs[status]=\"active\"))\n(two or more rows means one idea has two definitions)",
+				"dax": "EVALUATE\nFILTER ( Defs,\n  Defs[idea] = \"revenue\" && Defs[status] = \"active\" )\n(two or more rows means one idea has two definitions.\nA model's own measures carry no idea, so this needs the Defs table)"
+			}
+		},
+		{
+			"id": "a-retired-metric",
+			"family": "definitions-people-can-trust",
+			"kind": "Metric",
+			"name": "A retired metric",
+			"whatItIs": "A definition that was right once, and is no longer the one to use.",
+			"plainExample": "\"active customers (old)\" was replaced by \"active customers\" in July. Only the new one answers.",
+			"question": "Is this still the number we use?",
+			"layerMust": "Mark a definition as retired and stop serving it, so only the current one answers.",
+			"withoutIt": "An old definition still answers, and its number looks just as trusted as the new one.",
+			"examples": {
+				"sql": "-- Serve only the current definitions\nCREATE VIEW served_metrics AS\nSELECT metric_id, name, formula\nFROM metric_definitions\nWHERE status = 'active'",
+				"excel": "=FILTER(Defs[name],Defs[status]=\"active\")\n(use this list, not the whole table, wherever people pick a metric)",
+				"dax": "EVALUATE\nFILTER ( Defs, Defs[status] = \"active\" )\n(Power BI has no retired state for a measure.\nHiding one still lets an old report show its number)"
+			}
+		},
+		{
+			"id": "a-right-answer-of-nothing",
+			"family": "definitions-people-can-trust",
+			"kind": "Measure",
+			"name": "A right answer of nothing",
+			"whatItIs": "A question whose true answer is none, or zero.",
+			"plainExample": "orders refunded twice = none",
+			"question": "Which orders were refunded twice?",
+			"layerMust": "Return \"none\" as the answer, not an error, not an empty screen and not a guess.",
+			"withoutIt": "An empty result reads as a broken report, or a tool fills the gap with a number that is not there.",
+			"examples": {
+				"sql": "-- Zero is the answer, so say it\nSELECT COUNT(*) AS orders_refunded_twice\nFROM (\n  SELECT order_id\n  FROM refunds\n  GROUP BY order_id\n  HAVING COUNT(*) >= 2) r",
+				"excel": "=LET(o,UNIQUE(Refunds[order_id]),\n  FILTER(o,COUNTIFS(Refunds[order_id],o)>=2,\"None\"))",
+				"dax": "Orders Refunded Twice =\nCOUNTROWS (\n  FILTER ( VALUES ( Refunds[order_id] ),\n    CALCULATE ( COUNTROWS ( Refunds ) ) >= 2 ) ) + 0\n(+ 0 shows 0, not an empty cell)"
+			}
+		},
+		{
+			"id": "a-definition-that-changed",
+			"family": "definitions-people-can-trust",
+			"kind": "Metric",
+			"name": "A definition that changed",
+			"whatItIs": "The same metric name, with a new formula from a date on.",
+			"plainExample": "gross margin did not take off shipping before November, and does from November",
+			"question": "Why is last month's margin different from what I saw last month?",
+			"layerMust": "Keep each definition's history, and say which version gave a number.",
+			"withoutIt": "A remembered number and today's number disagree, and nobody can say why.",
+			"examples": {
+				"sql": "-- Which version applied on a date\nSELECT name, version, formula\nFROM metric_definitions\nWHERE metric_id = 'gross_margin'\n  AND DATE '2026-10-31' >= valid_from\n  AND DATE '2026-10-31' <  valid_to",
+				"excel": "=XLOOKUP(1,\n  (Defs[metric_id]=\"gross_margin\")\n *(Defs[valid_from]<=[@date])\n *(Defs[valid_to]>[@date]),\n  Defs[version])",
+				"dax": "EVALUATE\nFILTER ( Defs,\n  Defs[metric_id] = \"gross_margin\"\n    && Defs[valid_from] <= DATE ( 2026, 10, 31 )\n    && Defs[valid_to] > DATE ( 2026, 10, 31 ) )\n(a measure cannot say which formula it had on a date,\nso the history lives in the Defs table)"
 			}
 		}
 	]

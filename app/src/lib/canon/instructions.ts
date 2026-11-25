@@ -14,7 +14,7 @@ export const INTRO = {
 	lede: 'A metric is not one thing. "Total sales" and "share of buyers who come back" need very different things from the layer under them. This guide lists the patterns. Beside each one is the business question that makes it necessary.',
 	wordsHeading: 'Three bits of context first',
 	examplesNote:
-		'Each example comes four ways: in plain words, as SQL, as an Excel formula and as a DAX measure (the formula language of Power BI). Pick one on any pattern and every pattern follows.',
+		'Each example comes four ways: in plain words, as SQL, as an Excel formula and as DAX (the formula language of Power BI), a measure or a query. Pick one on any pattern and every pattern follows.',
 	sketchNote:
 		'The formulas show the shape of each pattern. They are not ready to paste into your own setup. SQL differs a little between databases.'
 };

@@ -12,7 +12,7 @@ An [AgileDataGuides](https://agiledataguides.com/agiledata-templates/) Pattern T
 
 ## Why It Exists
 
-A metric is not one thing. "Total sales" and "share of buyers who come back" need very different things from the layer under them. Most talk about metrics layers stops at sums and ratios. This guide lists the 32 patterns a layer meets in real use, from a plain total to a cohort, and the question a real person asks that needs each one.
+A metric is not one thing. "Total sales" and "share of buyers who come back" need very different things from the layer under them. Most talk about metrics layers stops at sums and ratios. This guide lists the 36 patterns a layer meets in real use, from a plain total to a cohort and a definition that changed, and the question a real person asks that needs each one.
 
 It is not a test. It has no right or wrong answers and no score. The patterns name no metrics-layer product, and the guide rates no tool. Use it to brief a vendor, to plan a build, or to explain to a business person why "just add it up" is not always possible.
 
@@ -20,11 +20,13 @@ It is not a test. It has no right or wrong answers and no score. The patterns na
 
 | Tab | Purpose |
 |-----|---------|
-| **32 Patterns** | Every pattern, grouped into 7 families. Each one leads with the pattern, with the question that needs it beside it. Pick Plain, SQL, Excel or DAX on any pattern and every pattern follows |
+| **36 Patterns** | Every pattern, grouped into 8 families. Each one leads with the pattern, with the question that needs it beside it. Pick Plain, SQL, Excel or DAX on any pattern and every pattern follows |
 | **My Metric Layer Patterns** | Your marks on one page: how many patterns your layer does (Yes), does with extra work (Partial) or cannot do (No), and the list to copy |
 | **Instructions** | What a metrics layer is, and how to use the app |
 
-The 7 families: Simple totals, Totals with a rule inside, Formulas over totals, Compared with a whole, Over time, Things that do not add up, and Across more than one list of events.
+The 8 families: Simple totals, Totals with a rule inside, Formulas over totals, Compared with a whole, Over time, Things that do not add up, Across more than one list of events, and Definitions that people can trust.
+
+Most patterns are about arithmetic. The last family is about definitions: two metrics that are nearly the same, a retired metric, a right answer of nothing, and a definition that changed. Three of its examples work over a small table of metric definitions, in SQL, Excel and DAX alike. Where Power BI has no native way to hold a pattern, the DAX example says so beside its query.
 
 ## Install and Run
 

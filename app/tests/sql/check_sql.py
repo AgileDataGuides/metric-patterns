@@ -59,7 +59,48 @@ CREATE TABLE customer_history(customer_id INT, tier TEXT, valid_from DATE, valid
 INSERT INTO customer_history VALUES (1,'Silver','2020-01-01','2026-02-01'),(1,'Gold','2026-02-01','9999-12-31'),
   (2,'Silver','2020-01-01','9999-12-31'),(3,'Bronze','2020-01-01','2026-04-01'),(3,'Silver','2026-04-01','9999-12-31'),
   (4,'Bronze','2020-01-01','9999-12-31'),(5,'Bronze','2020-01-01','9999-12-31');
+-- Two active definitions of one idea (revenue), a retired one, and a metric
+-- whose formula changed on 1 November 2026 (gross_margin, two versions)
+CREATE TABLE metric_definitions(metric_id TEXT, name TEXT, idea TEXT, formula TEXT, version INT,
+  status TEXT, valid_from DATE, valid_to DATE);
+INSERT INTO metric_definitions VALUES
+ ('revenue','Revenue','revenue','SUM(sale_price)',1,'active','2020-01-01','9999-12-31'),
+ ('net_revenue','Net revenue','revenue','SUM(sale_price) without returns',1,'active','2020-01-01','9999-12-31'),
+ -- a retired revenue that sorts AFTER the active ones, so a pair query that
+ -- forgets to filter the second side on status pairs it and fails
+ ('revenue_old','Revenue (old)','revenue','SUM(unit_price)',1,'retired','2020-01-01','2025-01-01'),
+ -- the retired id sorts BEFORE the active one, so a pair query that forgets
+ -- to filter the first side on status pairs them and fails
+ ('active_cust_old','Active customers (old)','active customers','buyers in 90 days',1,'retired','2020-01-01','2026-07-01'),
+ ('active_customers','Active customers','active customers','buyers in 30 days',1,'active','2026-07-01','9999-12-31'),
+ ('gross_margin','Gross margin','margin','(sales - cost) / sales',1,'superseded','2020-01-01','2026-11-01'),
+ ('gross_margin','Gross margin','margin','(sales - cost - shipping) / sales',2,'active','2026-11-01','9999-12-31');
+-- Three refunds, each on a different order: no order was refunded twice
+CREATE TABLE refunds(refund_id INT, order_id INT, amount DECIMAL(10,2), refund_date DATE);
+INSERT INTO refunds VALUES (1,101,20,'2026-01-10'),(2,102,25,'2026-01-25'),(3,106,60,'2026-04-03');
 """
+
+# An example that creates something (a view) is checked by a query on what it made
+FOLLOW_UP = {
+    "a-retired-metric": "SELECT name FROM served_metrics ORDER BY name",
+}
+
+# More probes for one example, each on changed data or a changed date, so a
+# query that is right only by luck on the main rows still fails. Each runs in
+# a transaction that is rolled back, so the main rows never change.
+#   (pattern id, setup SQL or None, (text to replace, replacement) or None, expected rows check)
+EXTRA_PROBES = [
+    # The day the new version starts: version 2, not 1 (catches < vs <= on valid_to, > vs >= on valid_from)
+    ("a-definition-that-changed", None, ("DATE '2026-10-31'", "DATE '2026-11-01'"),
+     lambda r: r == [("Gross margin", 2, "(sales - cost - shipping) / sales")]),
+    # The day before the first version: nothing applied
+    ("a-definition-that-changed", None, ("DATE '2026-10-31'", "DATE '2019-12-31'"), lambda r: r == []),
+    # One order refunded twice: the answer is 1, so a query that always says 0 fails
+    ("a-right-answer-of-nothing", "INSERT INTO refunds VALUES (4,101,20,'2026-02-01')", None, lambda r: r == [(1,)]),
+    # An order refunded three times still counts once
+    ("a-right-answer-of-nothing",
+     "INSERT INTO refunds VALUES (4,101,20,'2026-02-01'),(5,101,20,'2026-02-02')", None, lambda r: r == [(1,)]),
+]
 
 
 def near(a, b):
@@ -120,6 +161,10 @@ EXPECT = {
     "cohort": lambda r: near(by_key(r)["2026-01-01"], 1) and near(by_key(r)["2025-02-01"], 0)
         and near(by_key(r)["2026-03-01"], 0.5) and by_key(r)["2026-04-01"] is None,
     "a-detail-as-it-was-then": lambda r: {x[0]: x[1] for x in r} == {"Gold": 15, "Silver": 150, "Bronze": 141},
+    "two-metrics-nearly-the-same": lambda r: len(r) == 1 and r[0][0] == "revenue" and {r[0][1], r[0][3]} == {"Revenue", "Net revenue"},
+    "a-retired-metric": lambda r: [x[0] for x in r] == ["Active customers", "Gross margin", "Net revenue", "Revenue"],
+    "a-right-answer-of-nothing": lambda r: r == [(0,)],
+    "a-definition-that-changed": lambda r: r == [("Gross margin", 1, "(sales - cost) / sales")],
 }
 
 
@@ -133,6 +178,8 @@ def main() -> int:
         check = EXPECT.get(v["id"])
         try:
             rows = con.execute(sql).fetchall()
+            if v["id"] in FOLLOW_UP:
+                rows = con.execute(FOLLOW_UP[v["id"]]).fetchall()
             ok = check is not None and check(rows)
         except Exception as e:  # noqa: BLE001 - report every failure, keep going
             rows, ok = str(e).splitlines()[0], False
@@ -142,8 +189,35 @@ def main() -> int:
             print(f"FAIL {v['id']}: {reason}")
         else:
             print(f"ok   {v['id']}")
-    print(f"\n{len(content['patterns']) - failures} of {len(content['patterns'])} passed on DuckDB {duckdb.__version__}")
-    return 1 if failures else 0
+    by_id = {v["id"]: v for v in content["patterns"]}
+    probe_failures = 0
+    for i, (pid, setup, swap, check) in enumerate(EXTRA_PROBES, 1):
+        label = f"{pid} (probe {i})"
+        try:
+            sql = by_id[pid]["examples"]["sql"].replace("CURRENT_DATE", TODAY)
+            if swap is not None:
+                # A probe whose text is gone from the example would test nothing, so it fails
+                if swap[0] not in sql:
+                    raise ValueError(f"probe text {swap[0]!r} is not in the example")
+                sql = sql.replace(swap[0], swap[1])
+            con.execute("BEGIN TRANSACTION")
+            try:
+                if setup:
+                    con.execute(setup)
+                rows = con.execute(sql).fetchall()
+            finally:
+                con.execute("ROLLBACK")
+            ok = check(rows)
+        except Exception as e:  # noqa: BLE001 - report every failure, keep going
+            rows, ok = str(e).splitlines()[0], False
+        if not ok:
+            probe_failures += 1
+            print(f"FAIL {label}: {rows}")
+        else:
+            print(f"ok   {label}")
+    print(f"\n{len(content['patterns']) - failures} of {len(content['patterns'])} passed, "
+          f"and {len(EXTRA_PROBES) - probe_failures} of {len(EXTRA_PROBES)} extra probes, on DuckDB {duckdb.__version__}")
+    return 1 if failures or probe_failures else 0
 
 
 if __name__ == "__main__":
