@@ -5,17 +5,17 @@
 	"words": [
 		{
 			"name": "Fact",
-			"meaning": "A value that was recorded.",
+			"meaning": "A recorded value.",
 			"example": "an order amount of $42.50"
 		},
 		{
 			"name": "Measure",
-			"meaning": "One sum, count or other total over Facts.",
+			"meaning": "A basic calculation over Facts: a sum, a count or an average.",
 			"example": "total revenue = sum of order amount"
 		},
 		{
 			"name": "Metric",
-			"meaning": "A formula over Measures.",
+			"meaning": "A formula that combines Facts or Measures.",
 			"example": "revenue growth = (this year's revenue - last year's revenue) / last year's revenue"
 		}
 	],
@@ -29,7 +29,7 @@
 		{
 			"id": "totals-with-a-rule-inside",
 			"name": "Totals with a rule inside",
-			"description": "The business rule lives in the definition, so nobody has to remember it."
+			"description": "The rule lives in the definition, so nobody has to remember it."
 		},
 		{
 			"id": "formulas-over-totals",
@@ -248,7 +248,7 @@
 			"plainExample": "margin = (sales - product cost) / sales",
 			"question": "What is our gross margin?",
 			"layerMust": "Fetch each item's cost from the product table, and lose or repeat no item on the way.",
-			"withoutIt": "Items with no matching product drop out, and margin looks better than it is.",
+			"withoutIt": "Cost is added once for each product, not once for each item sold, and margin looks better than it is. Or items with no matching product drop out, and margin is wrong with no warning.",
 			"examples": {
 				"sql": "-- LEFT JOIN keeps every item. An item with no product\n-- has no cost: find those items, never count them as 0.\nSELECT (SUM(i.sale_price) - SUM(p.cost * i.quantity))\n       / SUM(i.sale_price)\nFROM order_items i\nLEFT JOIN products p ON p.product_id = i.product_id",
 				"excel": "=(SUM(Items[sale_price])\n  -SUMPRODUCT(Items[cost],Items[quantity]))\n  /SUM(Items[sale_price])",
@@ -306,7 +306,7 @@
 		{
 			"id": "a-wider-total-on-narrower-rows",
 			"family": "compared-with-a-whole",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "A wider total on narrower rows",
 			"whatItIs": "Two levels of total in one answer.",
 			"plainExample": "city sales, region sales, side by side",
@@ -322,7 +322,7 @@
 		{
 			"id": "top-n-and-rank",
 			"family": "compared-with-a-whole",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Top N and rank",
 			"whatItIs": "Order by a Measure and keep the first few.",
 			"plainExample": "top 3 brands by sales",
@@ -338,7 +338,7 @@
 		{
 			"id": "time-window",
 			"family": "over-time",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Time window",
 			"whatItIs": "A total over a moving period.",
 			"plainExample": "sales, last 30 days",
@@ -354,7 +354,7 @@
 		{
 			"id": "period-to-date",
 			"family": "over-time",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Period to date",
 			"whatItIs": "A total from the start of a period to now.",
 			"plainExample": "sales, year to date",
@@ -386,7 +386,7 @@
 		{
 			"id": "running-total",
 			"family": "over-time",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Running total",
 			"whatItIs": "Each period added to all the ones before.",
 			"plainExample": "cumulative sales by month",
@@ -418,7 +418,7 @@
 		{
 			"id": "one-measure-a-second-date",
 			"family": "over-time",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "One measure, a second date",
 			"whatItIs": "The same total placed on a different date.",
 			"plainExample": "sales by ship date",
@@ -434,7 +434,7 @@
 		{
 			"id": "periods-with-nothing-in-them",
 			"family": "over-time",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Periods with nothing in them",
 			"whatItIs": "A period with no rows must still show.",
 			"plainExample": "a month with no orders shows as empty",
@@ -450,7 +450,7 @@
 		{
 			"id": "distinct-count-across-a-split",
 			"family": "things-that-do-not-add-up",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "Distinct count across a split",
 			"whatItIs": "A distinct count shown with a breakdown.",
 			"plainExample": "buyers by category, and all buyers",
@@ -562,7 +562,7 @@
 		{
 			"id": "a-detail-as-it-was-then",
 			"family": "across-more-than-one-list-of-events",
-			"kind": "Metric",
+			"kind": "Measure",
 			"name": "A detail as it was then",
 			"whatItIs": "Use a value as it was on the day of the event.",
 			"plainExample": "sales by tier at time of order",
@@ -578,9 +578,9 @@
 		{
 			"id": "two-metrics-nearly-the-same",
 			"family": "definitions-people-can-trust",
-			"kind": "Metric",
+			"kind": "Either",
 			"name": "Two metrics that are nearly the same",
-			"whatItIs": "Two saved definitions for one business idea, with a small difference between them.",
+			"whatItIs": "Two saved definitions for one idea, with a small difference between them.",
 			"plainExample": "\"revenue\" counts every order. \"net revenue\" leaves out returns. Both answer \"what is our revenue?\"",
 			"question": "Which revenue number is the right one?",
 			"layerMust": "Hold one definition for one idea, or say how the two differ, so a question finds the right one.",
@@ -594,7 +594,7 @@
 		{
 			"id": "a-retired-metric",
 			"family": "definitions-people-can-trust",
-			"kind": "Metric",
+			"kind": "Either",
 			"name": "A retired metric",
 			"whatItIs": "A definition that was right once, and is no longer the one to use.",
 			"plainExample": "\"active customers (old)\" was replaced by \"active customers\" in July. Only the new one answers.",
@@ -626,7 +626,7 @@
 		{
 			"id": "a-definition-that-changed",
 			"family": "definitions-people-can-trust",
-			"kind": "Metric",
+			"kind": "Either",
 			"name": "A definition that changed",
 			"whatItIs": "The same metric name, with a new formula from a date on.",
 			"plainExample": "gross margin did not take off shipping before November, and does from November",

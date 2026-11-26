@@ -2,11 +2,11 @@
 
 **25 November 2026**
 
-AgileDataGuides today released Metric Patterns, an open source guide that lists the 32 patterns a metrics layer should support, with the business question that makes each one necessary.
+AgileDataGuides today released Metric Patterns, an open source guide that lists the 32 patterns a metrics layer should support, with the question that makes each one necessary.
 
 ## The Problem
 
-A metrics layer holds the definitions of a business's numbers, so every report and every AI agent gets the same answer. Most talk about metrics layers stops at sums and ratios. Then a person asks "what share of our buyers come back?" or "what were sales by the customer's tier at the time they bought?", and the layer gives a number that looks right and is wrong. A team choosing or building a layer has no plain list of what it must handle. Each vendor shows the patterns it does well. Nobody shows the ones a layer gets wrong without a warning.
+A metrics layer holds the definitions of an organisation's numbers, so every report and every GenAI agent gets the same answer. Most talk about metrics layers stops at sums and ratios. Then a person asks "what share of our buyers come back?" or "what were sales by the customer's tier at the time they bought?", and the layer gives a number that looks right and is wrong. A team choosing or building a layer has no plain list of what it must handle. Each vendor shows the patterns it does well. Nobody shows the ones a layer gets wrong without a warning.
 
 ## The Solution
 
@@ -24,7 +24,7 @@ The patterns live in one data file. Anyone can add a pattern by editing that fil
 
 - **Know what to ask for** — a plain list of what a metrics layer must handle, before a team buys or builds one
 - **See the wrong number before it happens** — every pattern names the error a layer gives without it
-- **Read it your way** — plain words for a business person, SQL, Excel or DAX for the person who builds it
+- **Read it your way** — plain words for a stakeholder, SQL, Excel or DAX for the person who builds it
 - **Brief a vendor** — mark a layer Yes, Partial or No and send the list
 - **Open to change** — add a pattern by editing one data file
 

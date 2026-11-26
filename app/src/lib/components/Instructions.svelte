@@ -6,7 +6,7 @@
 <div class={MP.content}>
 	<section class="{MP.reading} space-y-3">
 		<h2 class={MP.introHeading}>How to use Metric Patterns</h2>
-		<p>A metrics layer is the part of a data platform that holds the definitions and calculation rules for business numbers, so every BI tool and every GenAI tool gets the same answer. "Total sales" is easy. "Share of buyers who come back" is not. This guide lists the patterns a metrics layer should support, and the business question that makes each one necessary.</p>
+		<p>A metrics layer is the part of a data platform that holds the definitions and calculation rules for an organisation's numbers, so every BI tool and every GenAI tool gets the same answer. "Total sales" is easy. "Share of buyers who come back" is not. This guide lists the patterns a metrics layer should support, and the question that makes each one necessary.</p>
 		<p>It is not a test. There is no right or wrong answer and nothing is scored. Read a pattern, read the question that needs it, and see what goes wrong without it.</p>
 	</section>
 
@@ -14,7 +14,7 @@
 		<h3 class={TEXT.sectionHeader}>Read the patterns</h3>
 		<ul class={MP.bullets}>
 			<li>The <b>Patterns</b> tab groups the patterns into families. Pick a family to show only that one.</li>
-			<li>Each pattern is a <b>Measure</b> (one total over recorded values) or a <b>Metric</b> (a formula over Measures).</li>
+			<li>Each pattern is a <b>Measure</b> (one calculation over one Fact, however it is filtered, dated, split or ranked) or a <b>Metric</b> (a formula that combines two or more Measures or Facts). A pattern about the definition behind a number is marked <b>Either</b>.</li>
 			<li>Each example comes four ways: Plain, SQL, Excel and DAX. Pick one on any pattern and every pattern follows. The app remembers your pick.</li>
 			<li>The formulas show the shape of each pattern. The SQL is tested on {content.sqlTestedOn}, and SQL differs a little between databases. The Excel and DAX are read, not run.</li>
 		</ul>

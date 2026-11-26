@@ -12,7 +12,7 @@ Open an issue, or send a pull request that edits [`data/lookups/patterns.json`](
 |---|---|
 | `id` | A short name in lowercase with hyphens, for example `running-total`. Never change it once published: marks are kept by it |
 | `family` | The `id` of one of the families at the top of the file |
-| `kind` | `Measure` (one total over recorded values) or `Metric` (a formula over Measures) |
+| `kind` | `Measure` (one calculation over one Fact: a sum, a count, an average, a smallest, a largest or a middle value. A filter, a date, a split, a rank or an order does not change that), `Metric` (a formula that combines two or more Measures or Facts) or `Either` (a pattern about the definition behind a number, which can be a Measure or a Metric) |
 | `name` | The pattern, in a few words |
 | `whatItIs` | One sentence |
 | `plainExample` | The example in plain words |

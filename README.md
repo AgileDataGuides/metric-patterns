@@ -1,6 +1,6 @@
 # Metric Patterns
 
-Understand the patterns a metrics layer should support, and why. Each pattern comes with the business question that makes it necessary, what the layer must do, what goes wrong without it, and an example in plain words, SQL, Excel and DAX.
+Understand the patterns a metrics layer should support, and why. Each pattern comes with the question that makes it necessary, what the layer must do, what goes wrong without it, and an example in plain words, SQL, Excel and DAX.
 
 An [AgileDataGuides](https://agiledataguides.com/agiledata-templates/) Pattern Template app.
 
@@ -14,7 +14,7 @@ An [AgileDataGuides](https://agiledataguides.com/agiledata-templates/) Pattern T
 
 A metric is not one thing. "Total sales" and "share of buyers who come back" need very different things from the layer under them. Most talk about metrics layers stops at sums and ratios. This guide lists the 36 patterns a layer meets in real use, from a plain total to a cohort and a definition that changed, and the question a real person asks that needs each one.
 
-It is not a test. It has no right or wrong answers and no score. The patterns name no metrics-layer product, and the guide rates no tool. Use it to brief a vendor, to plan a build, or to explain to a business person why "just add it up" is not always possible.
+It is not a test. It has no right or wrong answers and no score. The patterns name no metrics-layer product, and the guide rates no tool. Use it to brief a vendor, to plan a build, or to explain to a stakeholder why "just add it up" is not always possible.
 
 ## What It Does
 
@@ -38,7 +38,7 @@ The app starts at [http://localhost:5126](http://localhost:5126).
 
 ## Features
 
-- **Pattern first**: each entry leads with the pattern, and the business question is the reason the layer needs it
+- **Pattern first**: each entry leads with the pattern, and the question a person asks is the reason the layer needs it
 - **Four kinds of example**: plain words, SQL, Excel and DAX. One pick switches every pattern, and the app remembers it
 - **What goes wrong without it**: every pattern names the wrong number a layer gives when it lacks the pattern
 - **Mark your own layer**: Yes, Partial or No on each pattern, with a tally
@@ -59,12 +59,12 @@ The examples use a small online shop: order items, products, customers, web sess
 
 ## Related Work
 
-Other people test metrics layers and semantic layers in other ways. This guide asks "what must a layer be able to say, and why". The work below asks "does a layer, or an AI agent on top of it, give the right number". Read each at its source. We read them, and ran none of them.
+Other people test metrics layers and semantic layers in other ways. This guide asks "what must a layer be able to say, and why". The work below asks "does a layer, or a GenAI agent on top of it, give the right number". Read each at its source. We read each one at its source on 26 November 2026, and ran none of them.
 
 | Work | What it is |
 |---|---|
 | [SLayer comparisons](https://github.com/MotleyAI/slayer/tree/1.x/examples/comparisons) ([summary page](https://motley.ai/compare/)) | A matrix of what four semantic layers can express (SLayer, Malloy, Cube Core, MetricFlow), with yes, partial or no on each row, each backed by queries run on DuckDB. Written by the maker of one of the four. The closest in kind to this guide |
-| [ossie_bench](https://github.com/djouallah/ossie_bench) | One small sales model built on three platforms and asked the same 13 questions, each answer compared with plain SQL. It calls itself an educational repo, not a benchmark |
+| [ossie_bench](https://github.com/djouallah/ossie_bench) | One small sales model built on four platforms and asked the same 15 questions, each answer compared with a reference answer run as SQL on DuckDB. It calls itself an educational repo, not a benchmark |
 | [dbt LLM Semantic Layer Benchmark](https://github.com/dbt-labs/dbt-llm-sl-bench) | The same questions asked three ways: as text-to-SQL, through the dbt Semantic Layer, and through the dbt MCP server |
 | [Cube semantic layer benchmark](https://github.com/cubedevinc/semantic-layer-benchmark) | The same questions with and without a document of measures and rules, on a retail model |
 | [LiveSQLBench](https://github.com/bird-bench/livesqlbench) | A text-to-SQL set with new releases, so a model cannot have learned the answers |

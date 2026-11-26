@@ -26,7 +26,8 @@ export interface Pattern {
 	id: string;
 	/** A Family id */
 	family: string;
-	kind: 'Measure' | 'Metric';
+	/** Either: a pattern about the definition behind a number, which can be a Measure or a Metric */
+	kind: 'Measure' | 'Metric' | 'Either';
 	name: string;
 	whatItIs: string;
 	plainExample: string;
